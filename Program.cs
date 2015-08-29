@@ -5,9 +5,26 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
+using CommandLine;
+using CommandLine.Text;
 
 namespace DicewarePasswordGen
 {
+    public class Options
+    {
+        [Option('b', "batch", DefaultValue = true, HelpText = "Run the program as batch mode")]
+        public bool BatchMode { get; set; }
+        [Option('l', "length", DefaultValue = 6, HelpText = "Generate a passphrase containing the specified amount of words. The higher the number of words, the safer the passphrase is.")]
+        public int PassphraseLength { get; set; }
+
+        [HelpOption]
+        public string GetUsage()
+        {
+            return HelpText.AutoBuild(this,
+              (HelpText current) => HelpText.DefaultParsingErrorsHandler(this, current));
+        }
+    }
+
     public class Program
     {
         private static string throwError = string.Empty;
@@ -136,7 +153,7 @@ namespace DicewarePasswordGen
             sb = new StringBuilder();
             foreach (int generatedNum in generatedNumbers)
             {
-                if (generatedNumbers.IndexOf(generatedNum) != 5)
+                if (generatedNumbers.IndexOf(generatedNum) != length - 1)
                     sb.AppendFormat("{0} ", wordList[generatedNum]);
                 else
                     sb.AppendLine(wordList[generatedNum]);
@@ -153,55 +170,58 @@ namespace DicewarePasswordGen
             Console.Clear();
             Console.Title = "Random Password Generator";
 
-            if (args.Length > 0)
+            var options = new Options();
+            if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                List<string> args2 = new List<string>(args);
-                if (args2.Contains("-b") || args2.Contains("-batch") || args2.Contains("--batch"))
-                    batchMode = true;
-            }
+                batchMode = options.BatchMode;
+                passphraseLength = options.PassphraseLength;
 
-            Console.Write("Downloading word list... ");
-            if (!DownloadWordList())
-            {
-                Console.WriteLine("failed!");
-                Console.WriteLine("Exception: {0}", throwError);
+                Console.Write("Downloading word list... ");
+                if (!DownloadWordList())
+                {
+                    Console.WriteLine("failed!");
+                    Console.WriteLine("Exception: {0}", throwError);
+                    AskToExitIfInteractive();
+                    return 1;
+                }
+                else
+                {
+                    Console.WriteLine("done!");
+                }
+
+                Console.Write("Parsing word list... ");
+                if (!ParseWordList())
+                {
+                    Console.WriteLine("failed!");
+                    Console.WriteLine(throwError);
+                    AskToExitIfInteractive();
+                    return 2;
+                }
+                else
+                {
+                    Console.WriteLine("done!");
+                }
+
+                Console.Write("Generating {0} word random passphrase... ", passphraseLength);
+                string generatedPassphrase = GeneratePassphrase(passphraseLength);
+                if (generatedPassphrase != null && generatedPassphrase != string.Empty)
+                {
+                    Console.WriteLine("done!");
+                    Clipboard.SetText(generatedPassphrase);
+                    Console.WriteLine("Passphrase was copied to clipboard.");
+                }
+                else
+                {
+                    Console.WriteLine("failed!");
+                    Console.WriteLine("Please specify a passphrase length of 6 or more words.");
+                    AskToExitIfInteractive();
+                    return 3;
+                }
+
                 AskToExitIfInteractive();
-                return 1;
+                return 0;
             }
-            else
-            {
-                Console.WriteLine("done!");
-            }
-
-            Console.Write("Parsing word list... ");
-            if (!ParseWordList())
-            {
-                Console.WriteLine("failed!");
-                Console.WriteLine(throwError);
-                AskToExitIfInteractive();
-                return 2;
-            }
-            else
-            {
-                Console.WriteLine("done!");
-            }
-
-            Console.Write("Generating {0} word random passphrase... ", passphraseLength);
-            string generatedPassphrase = GeneratePassphrase(passphraseLength);
-            if (generatedPassphrase != null)
-            {
-                Console.WriteLine("done!");
-                Clipboard.SetText(generatedPassphrase);
-                Console.WriteLine("Passphrase was copied to clipboard.");
-            }
-            else
-            {
-                AskToExitIfInteractive();
-                return 3;
-            }
-
-            AskToExitIfInteractive();
-            return 0;
+            return 4;
         }
 
         public static void AskToExitIfInteractive()
