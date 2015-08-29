@@ -5,6 +5,7 @@ It should be cryptographically secure using `System.Random`. What the tool does 
 
 If anyone has a better way of generating cryptographically secure random numbers, submit a Pull Request.
 
+This tool utilizes gsscoder's [CommandLine library](https://github.com/gsscoder/commandline).
 
 ### Usage
 
