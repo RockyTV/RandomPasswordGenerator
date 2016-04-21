@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
+using System.Text.RegularExpressions;
 using CommandLine;
 using CommandLine.Text;
 
@@ -57,11 +58,8 @@ namespace DicewarePasswordGen
 
         public static bool ParseWordList()
         {
-            string[] startingIndexes = new string[] { "1", "2", "3", "4", "5", "6" };
             if (!File.Exists(wordListFile))
-            {
                 return false;
-            }
 
             try
             {
@@ -71,7 +69,7 @@ namespace DicewarePasswordGen
                     {
                         while (!sr.EndOfStream)
                         {
-                            string currentLine = sr.ReadLine();
+							string currentLine = sr.ReadLine();
                             if (currentLine == null)
                             {
                                 break;
@@ -83,21 +81,18 @@ namespace DicewarePasswordGen
                                 continue;
                             }
 
-                            // Check if the current line is a valid entry
-                            if (!(trimmedLine.StartsWith("1") || trimmedLine.StartsWith("2") || trimmedLine.StartsWith("3") ||
-                                trimmedLine.StartsWith("4") || trimmedLine.StartsWith("5") || trimmedLine.StartsWith("6")))
-                            {
-                                continue;
-                            }
-
-                            int currentKey = int.Parse(trimmedLine.Substring(0, 5));
-                            string currentValue = trimmedLine.Substring(6);
-
-                            // Add the current line, if it is a valid entry, to the word list.
-                            if (!wordList.ContainsKey(currentKey))
-                            {
-                                wordList.Add(currentKey, currentValue);
-                            }
+							// Check if the current line is a valid entry
+							if (Regex.IsMatch(trimmedLine, @"^([1-6]{5})\t([\S]*)$"))
+							{
+								Match match = Regex.Match(trimmedLine, @"^([1-6]{5})\t([\S]*)$");
+								if (match.Groups.Count == 3)
+								{
+									int key = int.Parse(match.Groups[1].Value);
+									string value = match.Groups[2].Value;
+									if (!wordList.ContainsKey(key))
+										wordList.Add(key, value);
+								}
+							}
                         }
                     }
                 }
@@ -202,7 +197,7 @@ namespace DicewarePasswordGen
                     Console.WriteLine("done!");
                 }
 
-                Console.Write("Generating {0} word random passphrase... ", passphraseLength);
+				Console.Write("Generating {0} word random passphrase... ", passphraseLength);
                 string generatedPassphrase = GeneratePassphrase(passphraseLength);
                 if (generatedPassphrase != null && generatedPassphrase != string.Empty)
                 {
